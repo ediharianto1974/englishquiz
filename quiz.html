@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Grammar Mastery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .btn-3d {
+            background: linear-gradient(145deg, #e2e8f0, #94a3b8);
+            box-shadow: 0 6px 0 #64748b, 0 8px 15px rgba(0,0,0,0.3);
+            transition: all 0.1s ease;
+        }
+        .btn-3d:active { transform: translateY(4px); box-shadow: 0 2px 0 #64748b; }
+        .btn-locked { background: #1e293b; color: #475569; cursor: not-allowed; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .tab-active { color: white; border-bottom: 3px solid white; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="text-center mb-10 relative">
+            <button id="logoutBtn" onclick="logout()" class="hidden absolute right-0 top-0 bg-red-900/50 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-lg border border-red-500 transition-all">
+                LOGOUT
+            </button>
+            <h1 class="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-500 mb-2 uppercase">Grammar Mastery</h1>
+            <p class="text-slate-400 font-medium">Master the levels. Unlock your potential.</p>
+        </header>
+
+        <section id="loginArea" class="glass-panel p-6 rounded-3xl mb-10 border-b-4 border-slate-700">
+            <div class="flex gap-6 mb-6 border-b border-slate-700 pb-2">
+                <button id="tabSignin" onclick="switchTab('signin')" class="tab-active font-bold pb-1">SIGN IN</button>
+                <button id="tabRegister" onclick="switchTab('register')" class="text-slate-500 font-bold pb-1">REGISTER</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" id="studentName" placeholder="Full Name" class="bg-slate-800 border border-slate-600 p-4 rounded-xl outline-none">
+                <input type="text" id="studentClass" placeholder="Class (e.g. 6 Arif)" class="bg-slate-800 border border-slate-600 p-4 rounded-xl outline-none">
+            </div>
+            <button id="authBtn" onclick="handleAuth()" class="mt-6 w-full btn-3d text-slate-900 font-black py-4 rounded-xl uppercase">LOAD MY PROGRESS</button>
+        </section>
+
+        <div id="topicGrid" class="hidden grid grid-cols-2 md:grid-cols-3 gap-4 mb-10"></div>
+
+        <section id="quizPanel" class="hidden glass-panel p-6 md:p-10 rounded-3xl border-t-4 border-slate-500 shadow-2xl">
+            <div class="flex justify-between items-center mb-8">
+                <h2 id="activeTopicTitle" class="text-2xl md:text-3xl font-bold text-slate-200 uppercase"></h2>
+                <button onclick="closeQuiz()" class="text-slate-400 hover:text-white font-bold bg-slate-800 px-4 py-2 rounded-lg">✕ Close</button>
+            </div>
+            <form id="quizForm" class="space-y-10">
+                <div id="questionsContainer" class="space-y-8"></div>
+                <button type="submit" class="w-full btn-3d text-slate-900 font-black py-5 rounded-2xl text-xl uppercase">SUBMIT ANSWERS</button>
+            </form>
+        </section>
+
+        <div id="modal" class="fixed inset-0 bg-slate-950/90 hidden z-50 flex items-center justify-center p-6">
+            <div class="bg-slate-800 border border-slate-600 p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
+                <div id="modalIcon" class="text-6xl mb-4"></div>
+                <p id="modalMsg" class="text-xl font-bold mb-8 text-slate-200"></p>
+                <button onclick="closeModal()" class="w-full btn-3d text-slate-900 font-bold py-3 rounded-xl">CONTINUE</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzn96aYZmhiD09ABO_A9FhBnPzFvlSTGR1KY4lfMo8GKPDm0lPwOcGJIzofLrGE2r8rcg/exec";
+        const topics = ["Articles", "Prepositions", "Pronouns", "Verbs", "Conjunctions", "Nouns", "Adjectives", "Adverbs", "Tenses"];
+        let unlockedIndex = 0;
+        let currentTopic = "";
+        let authMode = "signin";
+        
+        // Timer Aktiviti
+        let idleTimer;
+        const IDLE_LIMIT = 5 * 60 * 1000; // 5 minit dalam milisaat
+
+        // Quiz Data (90 Questions)
+        const quizData = {
+            "Articles": [
+                {q: "1. I saw ___ eagle flying in the sky.", opts: ["a", "an", "the", "no article"], a: 1},
+                {q: "2. Would you like ___ cup of tea?", opts: ["a", "an", "the", "no article"], a: 0},
+                {q: "3. ___ sun rises in the east.", opts: ["a", "an", "the", "no article"], a: 2},
+                {q: "4. He is ___ honest man.", opts: ["a", "an", "the", "no article"], a: 1},
+                {q: "5. She plays ___ piano beautifully.", opts: ["a", "an", "the", "no article"], a: 2},
+                {q: "6. I need ___ new pair of shoes.", opts: ["a", "an", "the", "no article"], a: 0},
+                {q: "7. My brother is ___ engineer.", opts: ["a", "an", "the", "no article"], a: 1},
+                {q: "8. Let's go to ___ park we visited last week.", opts: ["a", "an", "the", "no article"], a: 2},
+                {q: "9. ___ apples are good for health.", opts: ["a", "an", "the", "no article"], a: 3},
+                {q: "10. This is ___ best day of my life.", opts: ["a", "an", "the", "no article"], a: 2}
+            ],
+            "Prepositions": [
+                {q: "1. The keys are ___ the drawer.", opts: ["on", "in", "at", "under"], a: 1},
+                {q: "2. We are going for dinner ___ Friday.", opts: ["at", "in", "on", "for"], a: 2},
+                {q: "3. She is standing ___ the bus stop.", opts: ["in", "on", "at", "by"], a: 2},
+                {q: "4. The cat jumped ___ the fence.", opts: ["over", "across", "through", "under"], a: 0},
+                {q: "5. I have lived here ___ 2010.", opts: ["for", "since", "during", "at"], a: 1},
+                {q: "6. Divide the cake ___ the four children.", opts: ["between", "among", "with", "for"], a: 1},
+                {q: "7. He sat ___ his two best friends.", opts: ["between", "among", "across", "along"], a: 0},
+                {q: "8. The plane flew ___ the clouds.", opts: ["under", "above", "at", "on"], a: 1},
+                {q: "9. I am interested ___ learning French.", opts: ["at", "on", "in", "for"], a: 2},
+                {q: "10. Put your signature ___ the line.", opts: ["in", "on", "above", "to"], a: 1}
+            ],
+            "Pronouns": [
+                {q: "1. ___ is going to the party with me.", opts: ["He", "Him", "His", "Himself"], a: 0},
+                {q: "2. This book belongs to Sarah; it is ___.", opts: ["she", "her", "hers", "herself"], a: 2},
+                {q: "3. My parents are away. ___ went to London.", opts: ["They", "Them", "Their", "Theirs"], a: 0},
+                {q: "4. Give the ball to ___.", opts: ["I", "me", "my", "mine"], a: 1},
+                {q: "5. We did the homework by ___.", opts: ["ourselves", "us", "our", "we"], a: 0},
+                {q: "6. Does ___ know where the key is?", opts: ["anybody", "somebody", "nobody", "everybody"], a: 0},
+                {q: "7. This is the man ___ helped me.", opts: ["who", "whom", "whose", "which"], a: 0},
+                {q: "8. ___ house is very large.", opts: ["They", "Their", "Them", "Theirs"], a: 1},
+                {q: "9. I saw ___ in the mirror.", opts: ["me", "my", "mine", "myself"], a: 3},
+                {q: "10. Neither of ___ could solve it.", opts: ["they", "them", "their", "theirs"], a: 1}
+            ],
+            "Verbs": [
+                {q: "1. She ___ to school every day.", opts: ["walk", "walks", "walking", "walked"], a: 1},
+                {q: "2. They ___ basketball right now.", opts: ["play", "plays", "are playing", "played"], a: 2},
+                {q: "3. I ___ my breakfast an hour ago.", opts: ["eat", "eats", "ate", "eaten"], a: 2},
+                {q: "4. We ___ our teacher next week.", opts: ["meet", "will meet", "meeting", "met"], a: 1},
+                {q: "5. Has he ___ his homework yet?", opts: ["do", "does", "did", "done"], a: 3},
+                {q: "6. Water ___ at 100 degrees Celsius.", opts: ["boil", "boils", "boiling", "boiled"], a: 1},
+                {q: "7. I ___ English for three years now.", opts: ["learn", "am learning", "have been learning", "learned"], a: 2},
+                {q: "8. They ___ the movie when the power went out.", opts: ["watch", "watched", "were watching", "had watched"], a: 2},
+                {q: "9. You should ___ your teeth twice a day.", opts: ["brush", "brushes", "brushed", "brushing"], a: 0},
+                {q: "10. Listen! The birds ___.", opts: ["sing", "sings", "is singing", "are singing"], a: 3}
+            ],
+            "Conjunctions": [
+                {q: "1. I like tea ___ I don't like coffee.", opts: ["and", "but", "or", "so"], a: 1},
+                {q: "2. You can have the cake ___ the ice cream.", opts: ["and", "but", "or", "nor"], a: 2},
+                {q: "3. He was tired ___ he went to bed early.", opts: ["because", "but", "so", "yet"], a: 2},
+                {q: "4. We stayed home ___ it was raining.", opts: ["although", "because", "but", "so"], a: 1},
+                {q: "5. ___ it was cold, she didn't wear a coat.", opts: ["Because", "Although", "So", "But"], a: 1},
+                {q: "6. You will fail ___ you study harder.", opts: ["if", "unless", "until", "whether"], a: 1},
+                {q: "7. I waited ___ the bus arrived.", opts: ["since", "until", "as", "if"], a: 1},
+                {q: "8. He is both a singer ___ a dancer.", opts: ["and", "or", "but", "also"], a: 0},
+                {q: "9. She is neither tall ___ short.", opts: ["or", "nor", "but", "and"], a: 1},
+                {q: "10. I'll go ___ you go.", opts: ["if", "unless", "but", "yet"], a: 0}
+            ],
+            "Nouns": [
+                {q: "1. Which is a collective noun?", opts: ["Water", "Team", "Happiness", "Teacher"], a: 1},
+                {q: "2. The plural of 'child' is ___.", opts: ["childs", "childrens", "children", "childes"], a: 2},
+                {q: "3. 'Honesty' is an example of ___ noun.", opts: ["proper", "common", "abstract", "concrete"], a: 2},
+                {q: "4. There are many ___ in the field.", opts: ["sheep", "sheeps", "sheepes", "shoep"], a: 0},
+                {q: "5. I need some ___ for my coffee.", opts: ["sugar", "sugars", "a sugar", "some sugars"], a: 0},
+                {q: "6. Which is a proper noun?", opts: ["City", "London", "Country", "Capital"], a: 1},
+                {q: "7. My ___ are tired from walking.", opts: ["foot", "foots", "feet", "feets"], a: 2},
+                {q: "8. I heard a loud ___ in the kitchen.", opts: ["noise", "noises", "a noises", "noised"], a: 0},
+                {q: "9. The ___ are playing in the garden.", opts: ["mouse", "mouses", "mice", "mices"], a: 2},
+                {q: "10. Please give me a ___ of water.", opts: ["glass", "glasses", "glassy", "glassing"], a: 0}
+            ],
+            "Adjectives": [
+                {q: "1. This is the ___ book I have ever read.", opts: ["good", "better", "best", "goodest"], a: 2},
+                {q: "2. Mt. Everest is ___ than K2.", opts: ["high", "higher", "highest", "more high"], a: 1},
+                {q: "3. She is a ___ student.", opts: ["carefully", "careful", "care", "caringly"], a: 1},
+                {q: "4. That was an ___ movie.", opts: ["interest", "interested", "interesting", "interestingly"], a: 2},
+                {q: "5. He is ___ than his brother.", opts: ["tall", "taller", "tallest", "more tall"], a: 1},
+                {q: "6. This exercise is ___.", opts: ["easy", "easily", "easier", "easiest"], a: 0},
+                {q: "7. Diamond is the ___ substance.", opts: ["hard", "harder", "hardest", "most hard"], a: 2},
+                {q: "8. I am ___ of spiders.", opts: ["frighten", "frightened", "frightening", "frightens"], a: 1},
+                {q: "9. She wore a ___ dress.", opts: ["beautiful", "beauty", "beautifully", "beautify"], a: 0},
+                {q: "10. This soup is too ___.", opts: ["salt", "salty", "salting", "salted"], a: 1}
+            ],
+            "Adverbs": [
+                {q: "1. She sings ___.", opts: ["beautiful", "beautifully", "beauty", "beautify"], a: 1},
+                {q: "2. He drove ___ during the storm.", opts: ["careful", "carefully", "care", "caring"], a: 1},
+                {q: "3. They ___ go to the cinema.", opts: ["seldom", "slow", "happy", "quick"], a: 0},
+                {q: "4. The turtle moves ___.", opts: ["slow", "slowly", "slowness", "slowing"], a: 1},
+                {q: "5. I will see you ___.", opts: ["soon", "early", "late", "often"], a: 0},
+                {q: "6. He spoke ___ to the baby.", opts: ["soft", "softly", "soften", "softness"], a: 1},
+                {q: "7. She always does her work ___.", opts: ["well", "good", "better", "best"], a: 0},
+                {q: "8. The rain fell ___.", opts: ["heavy", "heavily", "heaviness", "heaving"], a: 1},
+                {q: "9. We looked for the dog ___.", opts: ["everywhere", "anywhere", "nowhere", "somewhere"], a: 0},
+                {q: "10. You should eat ___.", opts: ["healthy", "healthily", "health", "healthful"], a: 1}
+            ],
+            "Tenses": [
+                {q: "1. I ___ my dinner already.", opts: ["ate", "have eaten", "eat", "am eating"], a: 1},
+                {q: "2. By next year, I ___ from college.", opts: ["graduate", "will graduate", "will have graduated", "graduated"], a: 2},
+                {q: "3. She ___ when the phone rang.", opts: ["is sleeping", "was sleeping", "sleeps", "slept"], a: 1},
+                {q: "4. If it rains, we ___ at home.", opts: ["stay", "will stay", "would stay", "stayed"], a: 1},
+                {q: "5. He ___ in this company since 2015.", opts: ["works", "is working", "has worked", "worked"], a: 2},
+                {q: "6. Tomorrow at 10, we ___ our exam.", opts: ["take", "will take", "will be taking", "taken"], a: 2},
+                {q: "7. I ___ seen that movie before.", opts: ["never have", "have never", "did never", "had never"], a: 1},
+                {q: "8. The sun ___ in the West.", opts: ["set", "sets", "setting", "is setting"], a: 1},
+                {q: "9. I ___ TV when she arrived.", opts: ["watched", "was watching", "am watching", "watch"], a: 1},
+                {q: "10. She ___ to the gym every Friday.", opts: ["goes", "go", "going", "gone"], a: 0}
+            ]
+        };
+
+// --- Logik Logout & Idle ---
+        function resetIdleTimer() {
+            clearTimeout(idleTimer);
+            if (!document.getElementById('loginArea').classList.contains('hidden')) return; // Jangan timer jika belum login
+            idleTimer = setTimeout(() => {
+                logout("Session expired due to inactivity.");
+            }, IDLE_LIMIT);
+        }
+
+        // Kesan pergerakan untuk reset timer
+        ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(evt => {
+            window.addEventListener(evt, resetIdleTimer, true);
+        });
+
+        function logout(reason = "You have been logged out.") {
+            unlockedIndex = 0;
+            currentTopic = "";
+            document.getElementById('studentName').value = "";
+            document.getElementById('studentClass').value = "";
+            
+            document.getElementById('topicGrid').classList.add('hidden');
+            document.getElementById('quizPanel').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.add('hidden');
+            document.getElementById('loginArea').classList.remove('hidden');
+            
+            showModal(reason, "Try Again");
+            clearTimeout(idleTimer);
+        }
+
+        // --- Logik Asal ---
+        function switchTab(mode) {
+            authMode = mode;
+            document.getElementById('authBtn').innerText = mode === 'register' ? "REGISTER & START" : "LOAD MY PROGRESS";
+            document.getElementById('tabSignin').className = mode === 'signin' ? "tab-active font-bold pb-1" : "text-slate-500 font-bold pb-1";
+            document.getElementById('tabRegister').className = mode === 'register' ? "tab-active font-bold pb-1" : "text-slate-500 font-bold pb-1";
+        }
+
+        async function handleAuth() {
+            const name = document.getElementById('studentName').value.trim();
+            const cls = document.getElementById('studentClass').value.trim();
+            if(!name || !cls) return showModal("Fill in Name and Class!", "Try Again");
+            showModal("⌛ Connecting...", "Loading");
+
+            if(authMode === 'register') {
+                await fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "register", name, className: cls }) });
+                showModal("Registration request sent! Now please SIGN IN.", "Success");
+                switchTab('signin');
+            } else {
+                const res = await fetch(`${SCRIPT_URL}?name=${encodeURIComponent(name)}&className=${encodeURIComponent(cls)}`);
+                const data = await res.json();
+                if(data.found) {
+                    unlockedIndex = parseInt(data.unlockedIndex);
+                    document.getElementById('topicGrid').classList.remove('hidden');
+                    document.getElementById('logoutBtn').classList.remove('hidden');
+                    document.getElementById('loginArea').classList.add('hidden');
+                    renderTopics();
+                    resetIdleTimer(); // Mula timer selepas login
+                    showModal(`Welcome ${name}!`, "Success");
+                } else { showModal("Not found. Please Register.", "Try Again"); }
+            }
+        }
+
+        function renderTopics() {
+            const container = document.getElementById('topicGrid');
+            container.innerHTML = '';
+            topics.forEach((t, i) => {
+                const isUnlocked = i <= unlockedIndex;
+                const btn = document.createElement('button');
+                btn.className = `p-5 rounded-2xl font-bold h-28 flex flex-col justify-center items-center ${isUnlocked ? 'btn-3d text-slate-900' : 'btn-locked'}`;
+                btn.innerHTML = `<span class="text-xs opacity-60 uppercase">Level ${i+1}</span><span>${t}</span>${!isUnlocked ? '<span class="text-[10px]">🔒 Locked</span>' : ''}`;
+                if(isUnlocked) btn.onclick = () => startQuiz(t);
+                container.appendChild(btn);
+            });
+        }
+
+        function startQuiz(topic) {
+            currentTopic = topic;
+            document.getElementById('activeTopicTitle').innerText = topic;
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = '';
+            quizData[topic]?.forEach((qObj, i) => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-800/50 p-6 rounded-2xl border border-slate-700";
+                div.innerHTML = `<p class="font-bold mb-4 text-slate-200">${qObj.q}</p>`;
+                const optsDiv = document.createElement('div');
+                optsDiv.className = "grid grid-cols-1 md:grid-cols-2 gap-3";
+                qObj.opts.forEach((opt, oi) => {
+                    optsDiv.innerHTML += `<label class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-700 cursor-pointer border border-transparent hover:border-slate-500 transition-all"><input type="radio" name="q${i}" value="${oi}" class="w-5 h-5 accent-slate-400" required><span class="text-sm">${opt}</span></label>`;
+                });
+                div.appendChild(optsDiv);
+                container.appendChild(div);
+            });
+            document.getElementById('topicGrid').classList.add('hidden');
+            document.getElementById('loginArea').classList.add('hidden');
+            document.getElementById('quizPanel').classList.remove('hidden');
+            window.scrollTo(0,0);
+        }
+
+        document.getElementById('quizForm').onsubmit = async (e) => {
+            e.preventDefault();
+            let mistakes = 0;
+            quizData[currentTopic].forEach((q, i) => {
+                if(parseInt(document.querySelector(`input[name="q${i}"]:checked`).value) !== q.a) mistakes++;
+            });
+
+            if(mistakes === 0) {
+                const idx = topics.indexOf(currentTopic);
+                if(idx === unlockedIndex && unlockedIndex < topics.length - 1) {
+                    unlockedIndex++;
+                    const name = document.getElementById('studentName').value;
+                    const className = document.getElementById('studentClass').value;
+                    fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "update", name, className, unlockedIndex }) });
+                }
+                showModal("EXCELLENT! 10/10.", "Success");
+                closeQuiz();
+            } else { showModal(`${mistakes} wrong answers. Try again!`, "Try Again"); }
+        };
+
+// --- 1. FUNGSI MODAL (PASTIKAN NAMA TEPAT) ---
+function showModal(msg, type) {
+    const modal = document.getElementById('modal');
+    const modalIcon = document.getElementById('modalIcon');
+    const modalMsg = document.getElementById('modalMsg');
+
+    if (modal && modalIcon && modalMsg) {
+        modalMsg.innerText = msg;
+        // Tetapkan ikon mengikut jenis mesej
+        if (type === "Success") modalIcon.innerText = "🏆";
+        else if (type === "Loading") modalIcon.innerText = "⌛";
+        else modalIcon.innerText = "❌";
+
+        modal.classList.remove('hidden');
+    }
+}
+
+// --- 2. FUNGSI TUTUP MODAL & RESET (HANYA SATU SAHAJA) ---
+function closeModal() {
+    // Sembunyikan modal
+    const modal = document.getElementById('modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    
+    // RESET borang kuiz supaya pilihan (radio button) kosong semula
+    const quizForm = document.getElementById('quizForm');
+    if (quizForm) {
+        quizForm.reset();
+    }
+    
+    // Kemaskini status tahap (locked/unlocked)
+    renderTopics();
+}
+
+// --- 3. FUNGSI TUTUP PANEL KUIZ ---
+function closeQuiz() {
+    document.getElementById('quizPanel').classList.add('hidden');
+    document.getElementById('topicGrid').classList.remove('hidden');
+    // Kekalkan loginArea tersembunyi kerana pelajar sudah login
+    document.getElementById('loginArea').classList.add('hidden');
+    window.scrollTo(0,0);
+}
+    </script>
+</body>
+</html>

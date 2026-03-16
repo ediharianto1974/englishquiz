@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher's Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .btn-3d { background: linear-gradient(145deg, #e2e8f0, #94a3b8); box-shadow: 0 4px 0 #64748b; transition: all 0.1s; }
+        .btn-3d:active { transform: translateY(2px); box-shadow: 0 2px 0 #64748b; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-6 md:p-12">
+
+    <div class="max-w-5xl mx-auto">
+        <header class="mb-10 flex flex-col md:flex-row justify-between items-end gap-4">
+            <div>
+                <h1 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-500 uppercase">Class Progress</h1>
+                <p class="text-slate-400">Monitoring real-time student performance</p>
+            </div>
+            <button onclick="fetchAllData()" class="btn-3d text-slate-900 font-bold px-6 py-2 rounded-lg">REFRESH DATA</button>
+        </header>
+
+        <div class="glass-card p-6 rounded-2xl mb-8 flex flex-wrap gap-4 items-center">
+            <span class="font-bold">Filter Class:</span>
+            <select id="classFilter" onchange="displayData()" class="bg-slate-800 border border-slate-700 p-2 rounded-lg outline-none">
+                <option value="all">All Classes</option>
+            </select>
+            <div id="stats" class="ml-auto text-sm font-mono text-slate-400"></div>
+        </div>
+
+        <div class="glass-card rounded-2xl overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-slate-800/50 border-b border-slate-700">
+                    <tr>
+                        <th class="p-4 text-xs uppercase font-bold">Student Name</th>
+                        <th class="p-4 text-xs uppercase font-bold">Class</th>
+                        <th class="p-4 text-xs uppercase font-bold">Progress Bar</th>
+                        <th class="p-4 text-xs uppercase font-bold text-right">Current Level</th>
+                    </tr>
+                </thead>
+                <tbody id="studentTableBody" class="divide-y divide-slate-800"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzn96aYZmhiD09ABO_A9FhBnPzFvlSTGR1KY4lfMo8GKPDm0lPwOcGJIzofLrGE2r8rcg/exec";
+        const topics = ["Articles", "Prepositions", "Pronouns", "Verbs", "Conjunctions", "Nouns", "Adjectives", "Adverbs", "Tenses"];
+        let allStudents = [];
+
+        async function fetchAllData() {
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=all`);
+                allStudents = await res.json();
+                const classes = [...new Set(allStudents.map(s => s.className))];
+                const filter = document.getElementById('classFilter');
+                filter.innerHTML = '<option value="all">All Classes</option>';
+                classes.forEach(c => filter.innerHTML += `<option value="${c}">${c}</option>`);
+                displayData();
+            } catch (e) { alert("Error loading data."); }
+        }
+
+        function displayData() {
+            const filter = document.getElementById('classFilter').value;
+            const tbody = document.getElementById('studentTableBody');
+            tbody.innerHTML = '';
+            const filtered = filter === 'all' ? allStudents : allStudents.filter(s => s.className === filter);
+            filtered.sort((a,b) => b.unlockedIndex - a.unlockedIndex);
+
+            filtered.forEach(s => {
+                const perc = ((s.unlockedIndex + 1) / topics.length) * 100;
+                tbody.innerHTML += `
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="p-4 font-medium">${s.name}</td>
+                        <td class="p-4 text-slate-400 text-sm">${s.className}</td>
+                        <td class="p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="flex-1 bg-slate-800 h-2 rounded-full overflow-hidden">
+                                    <div class="bg-gradient-to-r from-slate-400 to-white h-full" style="width: ${perc}%"></div>
+                                </div>
+                                <span class="text-[10px] text-slate-500 font-bold">${Math.round(perc)}%</span>
+                            </div>
+                        </td>
+                        <td class="p-4 text-right">
+                            <span class="bg-slate-700 text-white text-[10px] px-2 py-1 rounded font-bold uppercase">${topics[s.unlockedIndex] || 'N/A'}</span>
+                        </td>
+                    </tr>`;
+            });
+            document.getElementById('stats').innerText = `Total: ${filtered.length} Students`;
+        }
+
+        window.onload = fetchAllData;
+    </script>
+</body>
+</html>
