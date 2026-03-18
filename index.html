@@ -34,7 +34,7 @@
                 <button id="tabRegister" onclick="switchTab('register')" class="text-slate-500 font-bold pb-1">REGISTER</button>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" id="studentName" placeholder="Full Name" class="bg-slate-800 border border-slate-600 p-4 rounded-xl outline-none">
+                <input type="text" id="studentName" placeholder="Full Name" class="bg-slate-800 border border-slate-600 p-4 rounded-xl outline-none uppercase">
                 <input type="text" id="studentClass" placeholder="Class (e.g. 6 Arif)" class="bg-slate-800 border border-slate-600 p-4 rounded-xl outline-none">
             </div>
             <button id="authBtn" onclick="handleAuth()" class="mt-6 w-full btn-3d text-slate-900 font-black py-4 rounded-xl uppercase">LOAD MY PROGRESS</button>
@@ -68,12 +68,9 @@
         let unlockedIndex = 0;
         let currentTopic = "";
         let authMode = "signin";
-        
-        // Timer Aktiviti
         let idleTimer;
-        const IDLE_LIMIT = 5 * 60 * 1000; // 5 minit dalam milisaat
+        const IDLE_LIMIT = 5 * 60 * 1000;
 
-        // Quiz Data (90 Questions)
         const quizData = {
             "Articles": [
                 {q: "1. I saw ___ eagle flying in the sky.", opts: ["a", "an", "the", "no article"], a: 1},
@@ -185,16 +182,14 @@
             ]
         };
 
-// --- Logik Logout & Idle ---
         function resetIdleTimer() {
             clearTimeout(idleTimer);
-            if (!document.getElementById('loginArea').classList.contains('hidden')) return; // Jangan timer jika belum login
+            if (!document.getElementById('loginArea').classList.contains('hidden')) return;
             idleTimer = setTimeout(() => {
                 logout("Session expired due to inactivity.");
             }, IDLE_LIMIT);
         }
 
-        // Kesan pergerakan untuk reset timer
         ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(evt => {
             window.addEventListener(evt, resetIdleTimer, true);
         });
@@ -204,17 +199,14 @@
             currentTopic = "";
             document.getElementById('studentName').value = "";
             document.getElementById('studentClass').value = "";
-            
             document.getElementById('topicGrid').classList.add('hidden');
             document.getElementById('quizPanel').classList.add('hidden');
             document.getElementById('logoutBtn').classList.add('hidden');
             document.getElementById('loginArea').classList.remove('hidden');
-            
             showModal(reason, "Try Again");
             clearTimeout(idleTimer);
         }
 
-        // --- Logik Asal ---
         function switchTab(mode) {
             authMode = mode;
             document.getElementById('authBtn').innerText = mode === 'register' ? "REGISTER & START" : "LOAD MY PROGRESS";
@@ -223,8 +215,10 @@
         }
 
         async function handleAuth() {
-            const name = document.getElementById('studentName').value.trim();
+            // Pengemaskini: Tukar nama kepada UPPERCASE untuk carian tepat di Sheets
+            const name = document.getElementById('studentName').value.trim().toUpperCase();
             const cls = document.getElementById('studentClass').value.trim();
+
             if(!name || !cls) return showModal("Fill in Name and Class!", "Try Again");
             showModal("⌛ Connecting...", "Loading");
 
@@ -241,7 +235,7 @@
                     document.getElementById('logoutBtn').classList.remove('hidden');
                     document.getElementById('loginArea').classList.add('hidden');
                     renderTopics();
-                    resetIdleTimer(); // Mula timer selepas login
+                    resetIdleTimer();
                     showModal(`Welcome ${name}!`, "Success");
                 } else { showModal("Not found. Please Register.", "Try Again"); }
             }
@@ -294,7 +288,7 @@
                 const idx = topics.indexOf(currentTopic);
                 if(idx === unlockedIndex && unlockedIndex < topics.length - 1) {
                     unlockedIndex++;
-                    const name = document.getElementById('studentName').value;
+                    const name = document.getElementById('studentName').value.trim().toUpperCase();
                     const className = document.getElementById('studentClass').value;
                     fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "update", name, className, unlockedIndex }) });
                 }
@@ -303,49 +297,37 @@
             } else { showModal(`${mistakes} wrong answers. Try again!`, "Try Again"); }
         };
 
-// --- 1. FUNGSI MODAL (PASTIKAN NAMA TEPAT) ---
-function showModal(msg, type) {
-    const modal = document.getElementById('modal');
-    const modalIcon = document.getElementById('modalIcon');
-    const modalMsg = document.getElementById('modalMsg');
+        function showModal(msg, type) {
+            const modal = document.getElementById('modal');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalMsg = document.getElementById('modalMsg');
 
-    if (modal && modalIcon && modalMsg) {
-        modalMsg.innerText = msg;
-        // Tetapkan ikon mengikut jenis mesej
-        if (type === "Success") modalIcon.innerText = "🏆";
-        else if (type === "Loading") modalIcon.innerText = "⌛";
-        else modalIcon.innerText = "❌";
+            if (modal && modalIcon && modalMsg) {
+                modalMsg.innerText = msg;
+                if (type === "Success") modalIcon.innerText = "🏆";
+                else if (type === "Loading") modalIcon.innerText = "⌛";
+                else modalIcon.innerText = "❌";
+                modal.classList.remove('hidden');
+            }
+        }
 
-        modal.classList.remove('hidden');
-    }
-}
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            if (modal) modal.classList.add('hidden');
+            
+            // Pengemaskini: RESET jawapan kuiz setiap kali modal ditutup (Try Again)
+            const quizForm = document.getElementById('quizForm');
+            if (quizForm) quizForm.reset();
+            
+            renderTopics();
+        }
 
-// --- 2. FUNGSI TUTUP MODAL & RESET (HANYA SATU SAHAJA) ---
-function closeModal() {
-    // Sembunyikan modal
-    const modal = document.getElementById('modal');
-    if (modal) {
-        modal.classList.add('hidden');
-    }
-    
-    // RESET borang kuiz supaya pilihan (radio button) kosong semula
-    const quizForm = document.getElementById('quizForm');
-    if (quizForm) {
-        quizForm.reset();
-    }
-    
-    // Kemaskini status tahap (locked/unlocked)
-    renderTopics();
-}
-
-// --- 3. FUNGSI TUTUP PANEL KUIZ ---
-function closeQuiz() {
-    document.getElementById('quizPanel').classList.add('hidden');
-    document.getElementById('topicGrid').classList.remove('hidden');
-    // Kekalkan loginArea tersembunyi kerana pelajar sudah login
-    document.getElementById('loginArea').classList.add('hidden');
-    window.scrollTo(0,0);
-}
+        function closeQuiz() {
+            document.getElementById('quizPanel').classList.add('hidden');
+            document.getElementById('topicGrid').classList.remove('hidden');
+            document.getElementById('loginArea').classList.add('hidden');
+            window.scrollTo(0,0);
+        }
     </script>
 </body>
 </html>
