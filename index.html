@@ -34,7 +34,10 @@
                 <button id="tabRegister" onclick="switchTab('register')" class="text-slate-500 font-bold pb-1">REGISTER</button>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" id="studentName" placeholder="Full Name" class="bg-slate-800 border border-slate-600 p-4 rounded-xl outline-none uppercase">
+                <div class="relative">
+                    <input type="text" id="studentName" list="studentSuggestions" placeholder="Full Name" class="w-full bg-slate-800 border border-slate-600 p-4 rounded-xl outline-none uppercase" oninput="handleNameInput(this.value)">
+                    <datalist id="studentSuggestions"></datalist>
+                </div>
                 <input type="text" id="studentClass" placeholder="Class (e.g. 6 ARIF)" class="bg-slate-800 border border-slate-600 p-4 rounded-xl outline-none uppercase">
             </div>
             <button id="authBtn" onclick="handleAuth()" class="mt-6 w-full btn-3d text-slate-900 font-black py-4 rounded-xl uppercase">LOAD MY PROGRESS</button>
@@ -68,6 +71,7 @@
         let unlockedIndex = 0;
         let currentTopic = "";
         let authMode = "signin";
+        let globalStudentList = []; // Simpan data pelajar untuk autofill
         let idleTimer;
         const IDLE_LIMIT = 5 * 60 * 1000;
 
@@ -182,7 +186,32 @@
             ]
         };
 
-        // --- AUTH & PROGRESS ---
+        // --- AUTH, AUTOFILL & PROGRESS ---
+
+        async function loadStudentList() {
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=all`);
+                globalStudentList = await res.json();
+                const datalist = document.getElementById('studentSuggestions');
+                datalist.innerHTML = '';
+                globalStudentList.forEach(s => {
+                    if(s.name) {
+                        const opt = document.createElement('option');
+                        opt.value = s.name;
+                        datalist.appendChild(opt);
+                    }
+                });
+            } catch (e) { console.log("Suggestion list offline."); }
+        }
+
+        function handleNameInput(val) {
+            const nameInput = val.trim().toUpperCase();
+            const match = globalStudentList.find(s => s.name.toUpperCase() === nameInput);
+            if (match) {
+                document.getElementById('studentClass').value = match.className.toUpperCase();
+                switchTab('signin');
+            }
+        }
 
         function resetIdleTimer() {
             clearTimeout(idleTimer);
@@ -217,7 +246,6 @@
         }
 
         async function handleAuth() {
-            // Pengemaskini: Penyeragaman UPPERCASE untuk Nama & Kelas
             const name = document.getElementById('studentName').value.trim().toUpperCase();
             const cls = document.getElementById('studentClass').value.trim().toUpperCase();
 
@@ -228,6 +256,7 @@
                 await fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "register", name, className: cls }) });
                 showModal("Registration request sent! Now please SIGN IN.", "Success");
                 switchTab('signin');
+                loadStudentList(); // Refresh senarai autofill
             } else {
                 const res = await fetch(`${SCRIPT_URL}?name=${encodeURIComponent(name)}&className=${encodeURIComponent(cls)}`);
                 const data = await res.json();
@@ -274,7 +303,6 @@
                 container.appendChild(div);
             });
             document.getElementById('topicGrid').classList.add('hidden');
-            document.getElementById('loginArea').classList.add('hidden');
             document.getElementById('quizPanel').classList.remove('hidden');
             window.scrollTo(0,0);
         }
@@ -301,39 +329,28 @@
             }
         };
 
-        // --- MODAL & UI UTILITIES ---
+        // --- UI UTILITIES ---
 
         function showModal(msg, type) {
-            const modal = document.getElementById('modal');
-            const icon = document.getElementById('modalIcon');
-            const msgEl = document.getElementById('modalMsg');
-
-            if (modal && icon && msgEl) {
-                msgEl.innerText = msg;
-                if (type === "Success") icon.innerText = "🏆";
-                else if (type === "Loading") icon.innerText = "⌛";
-                else icon.innerText = "❌";
-                modal.classList.remove('hidden');
-            }
+            document.getElementById('modalMsg').innerText = msg;
+            document.getElementById('modalIcon').innerText = type === "Success" ? "🏆" : (type === "Loading" ? "⌛" : "❌");
+            document.getElementById('modal').classList.remove('hidden');
         }
 
-        function closeModal() {
-            const modal = document.getElementById('modal');
-            if (modal) modal.classList.add('hidden');
-            
-            // Pengemaskini: Reset form setiap kali tutup modal kegagalan
+        function closeModal() { 
+            document.getElementById('modal').classList.add('hidden'); 
             const quizForm = document.getElementById('quizForm');
             if (quizForm) quizForm.reset();
-            
-            renderTopics();
+            renderTopics(); 
         }
 
         function closeQuiz() {
             document.getElementById('quizPanel').classList.add('hidden');
             document.getElementById('topicGrid').classList.remove('hidden');
-            document.getElementById('loginArea').classList.add('hidden');
             window.scrollTo(0,0);
         }
+
+        window.onload = loadStudentList;
     </script>
 </body>
 </html>
