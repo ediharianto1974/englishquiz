@@ -35,7 +35,7 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="text" id="studentName" placeholder="Full Name" class="bg-slate-800 border border-slate-600 p-4 rounded-xl outline-none uppercase">
-                <input type="text" id="studentClass" placeholder="Class (e.g. 6 Arif)" class="bg-slate-800 border border-slate-600 p-4 rounded-xl outline-none">
+                <input type="text" id="studentClass" placeholder="Class (e.g. 6 ARIF)" class="bg-slate-800 border border-slate-600 p-4 rounded-xl outline-none uppercase">
             </div>
             <button id="authBtn" onclick="handleAuth()" class="mt-6 w-full btn-3d text-slate-900 font-black py-4 rounded-xl uppercase">LOAD MY PROGRESS</button>
         </section>
@@ -182,6 +182,8 @@
             ]
         };
 
+        // --- AUTH & PROGRESS ---
+
         function resetIdleTimer() {
             clearTimeout(idleTimer);
             if (!document.getElementById('loginArea').classList.contains('hidden')) return;
@@ -215,39 +217,32 @@
         }
 
         async function handleAuth() {
-    // Kemaskini: Kedua-dua nama dan kelas ditukar kepada UPPERCASE
-    const name = document.getElementById('studentName').value.trim().toUpperCase();
-    const cls = document.getElementById('studentClass').value.trim().toUpperCase();
+            // Pengemaskini: Penyeragaman UPPERCASE untuk Nama & Kelas
+            const name = document.getElementById('studentName').value.trim().toUpperCase();
+            const cls = document.getElementById('studentClass').value.trim().toUpperCase();
 
-    if(!name || !cls) return showModal("Fill in Name and Class!", "Try Again");
-    showModal("⌛ Connecting...", "Loading");
+            if(!name || !cls) return showModal("Fill in Name and Class!", "Try Again");
+            showModal("⌛ Connecting...", "Loading");
 
-    if(authMode === 'register') {
-        // Hantar data ke Sheets dalam format huruf besar
-        await fetch(SCRIPT_URL, { 
-            method: "POST", 
-            mode: "no-cors", 
-            body: JSON.stringify({ action: "register", name, className: cls }) 
-        });
-        showModal("Registration request sent! Now please SIGN IN.", "Success");
-        switchTab('signin');
-    } else {
-        // Cari data di Sheets menggunakan format huruf besar
-        const res = await fetch(`${SCRIPT_URL}?name=${encodeURIComponent(name)}&className=${encodeURIComponent(cls)}`);
-        const data = await res.json();
-        if(data.found) {
-            unlockedIndex = parseInt(data.unlockedIndex);
-            document.getElementById('topicGrid').classList.remove('hidden');
-            document.getElementById('logoutBtn').classList.remove('hidden');
-            document.getElementById('loginArea').classList.add('hidden');
-            renderTopics();
-            resetIdleTimer();
-            showModal(`Welcome ${name}!`, "Success");
-        } else { 
-            showModal("Not found. Please Register.", "Try Again"); 
+            if(authMode === 'register') {
+                await fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "register", name, className: cls }) });
+                showModal("Registration request sent! Now please SIGN IN.", "Success");
+                switchTab('signin');
+            } else {
+                const res = await fetch(`${SCRIPT_URL}?name=${encodeURIComponent(name)}&className=${encodeURIComponent(cls)}`);
+                const data = await res.json();
+                if(data.found) {
+                    unlockedIndex = parseInt(data.unlockedIndex);
+                    document.getElementById('topicGrid').classList.remove('hidden');
+                    document.getElementById('logoutBtn').classList.remove('hidden');
+                    document.getElementById('loginArea').classList.add('hidden');
+                    renderTopics();
+                    resetIdleTimer();
+                    showModal(`Welcome ${name}!`, "Success");
+                } else { showModal("Not found. Please Register.", "Try Again"); }
+            }
         }
-    }
-}
+
         function renderTopics() {
             const container = document.getElementById('topicGrid');
             container.innerHTML = '';
@@ -296,24 +291,28 @@
                 if(idx === unlockedIndex && unlockedIndex < topics.length - 1) {
                     unlockedIndex++;
                     const name = document.getElementById('studentName').value.trim().toUpperCase();
-                    const className = document.getElementById('studentClass').value;
+                    const className = document.getElementById('studentClass').value.trim().toUpperCase();
                     fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "update", name, className, unlockedIndex }) });
                 }
                 showModal("EXCELLENT! 10/10.", "Success");
                 closeQuiz();
-            } else { showModal(`${mistakes} wrong answers. Try again!`, "Try Again"); }
+            } else { 
+                showModal(`${mistakes} wrong answers. Try again!`, "Try Again"); 
+            }
         };
+
+        // --- MODAL & UI UTILITIES ---
 
         function showModal(msg, type) {
             const modal = document.getElementById('modal');
-            const modalIcon = document.getElementById('modalIcon');
-            const modalMsg = document.getElementById('modalMsg');
+            const icon = document.getElementById('modalIcon');
+            const msgEl = document.getElementById('modalMsg');
 
-            if (modal && modalIcon && modalMsg) {
-                modalMsg.innerText = msg;
-                if (type === "Success") modalIcon.innerText = "🏆";
-                else if (type === "Loading") modalIcon.innerText = "⌛";
-                else modalIcon.innerText = "❌";
+            if (modal && icon && msgEl) {
+                msgEl.innerText = msg;
+                if (type === "Success") icon.innerText = "🏆";
+                else if (type === "Loading") icon.innerText = "⌛";
+                else icon.innerText = "❌";
                 modal.classList.remove('hidden');
             }
         }
@@ -322,7 +321,7 @@
             const modal = document.getElementById('modal');
             if (modal) modal.classList.add('hidden');
             
-            // Pengemaskini: RESET jawapan kuiz setiap kali modal ditutup (Try Again)
+            // Pengemaskini: Reset form setiap kali tutup modal kegagalan
             const quizForm = document.getElementById('quizForm');
             if (quizForm) quizForm.reset();
             
