@@ -3,12 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher's Analytics</title>
+    <title>Teacher's Analytics - Grammar Mastery</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .btn-3d { background: linear-gradient(145deg, #e2e8f0, #94a3b8); box-shadow: 0 4px 0 #64748b; transition: all 0.1s; }
-        .btn-3d:active { transform: translateY(2px); box-shadow: 0 2px 0 #64748b; }
+        .glass-card { 
+            background: rgba(30, 41, 59, 0.7); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+        }
+        .btn-3d { 
+            background: linear-gradient(145deg, #e2e8f0, #94a3b8); 
+            box-shadow: 0 4px 0 #64748b; 
+            transition: all 0.1s; 
+        }
+        .btn-3d:active { 
+            transform: translateY(2px); 
+            box-shadow: 0 2px 0 #64748b; 
+        }
+
+        /* Gaya Khusus Untuk Cetakan */
+        @media print {
+            .no-print { 
+                display: none !important; 
+            }
+            body { 
+                background: white !important; 
+                color: black !important; 
+                padding: 0; 
+            }
+            .glass-card { 
+                background: transparent !important; 
+                border: none !important; 
+                backdrop-filter: none !important; 
+                box-shadow: none !important;
+            }
+            table { 
+                border-collapse: collapse; 
+                width: 100%; 
+                color: black !important; 
+            }
+            th, td { 
+                border: 1px solid #000 !important; 
+                color: black !important; 
+                padding: 8px !important;
+            }
+            .text-transparent { 
+                color: black !important; 
+                background: none !important; 
+                -webkit-background-clip: initial !important; 
+                background-clip: initial !important; 
+            }
+            /* Sembunyikan progress bar semasa cetak dan ganti dengan teks % sahaja jika perlu, 
+               atau kekalkan bentuk asas tanpa gradient */
+            .bg-slate-800 { background: #eee !important; border: 1px solid #ccc !important; }
+            .bg-gradient-to-r { background: #555 !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-6 md:p-12">
@@ -16,81 +65,140 @@
     <div class="max-w-5xl mx-auto">
         <header class="mb-10 flex flex-col md:flex-row justify-between items-end gap-4">
             <div>
-                <h1 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-500 uppercase">Class Progress</h1>
-                <p class="text-slate-400">Monitoring real-time student performance</p>
+                <h1 id="mainTitle" class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-500 uppercase">Class Progress</h1>
+                <p id="subTitle" class="text-slate-400">Monitoring real-time student performance</p>
             </div>
-            <button onclick="fetchAllData()" class="btn-3d text-slate-900 font-bold px-6 py-2 rounded-lg">REFRESH DATA</button>
+            <div class="flex gap-3 no-print">
+                <button onclick="fetchAllData()" class="btn-3d text-slate-900 font-bold px-6 py-2 rounded-lg text-sm">
+                    REFRESH DATA
+                </button>
+                <button onclick="window.print()" class="btn-3d bg-gradient-to-r from-blue-300 to-blue-500 text-slate-900 font-bold px-6 py-2 rounded-lg text-sm">
+                    PRINT REPORT
+                </button>
+            </div>
         </header>
 
-        <div class="glass-card p-6 rounded-2xl mb-8 flex flex-wrap gap-4 items-center">
-            <span class="font-bold">Filter Class:</span>
-            <select id="classFilter" onchange="displayData()" class="bg-slate-800 border border-slate-700 p-2 rounded-lg outline-none">
-                <option value="all">All Classes</option>
-            </select>
-            <div id="stats" class="ml-auto text-sm font-mono text-slate-400"></div>
+        <div class="glass-card p-6 rounded-2xl mb-8 flex flex-wrap gap-4 items-center no-print">
+            <div class="flex items-center gap-3">
+                <span class="font-bold">Filter Class:</span>
+                <select id="classFilter" onchange="displayData()" class="bg-slate-800 border border-slate-700 p-2 rounded-lg outline-none text-white cursor-pointer">
+                    <option value="all">All Classes</option>
+                </select>
+            </div>
+            <div id="stats" class="ml-auto text-sm font-mono text-slate-400 bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-700">
+                Loading...
+            </div>
         </div>
 
-        <div class="glass-card rounded-2xl overflow-x-auto">
-            <table class="w-full text-left">
-                <thead class="bg-slate-800/50 border-b border-slate-700">
-                    <tr>
-                        <th class="p-4 text-xs uppercase font-bold">Student Name</th>
-                        <th class="p-4 text-xs uppercase font-bold">Class</th>
-                        <th class="p-4 text-xs uppercase font-bold">Progress Bar</th>
-                        <th class="p-4 text-xs uppercase font-bold text-right">Current Level</th>
-                    </tr>
-                </thead>
-                <tbody id="studentTableBody" class="divide-y divide-slate-800"></tbody>
-            </table>
+        <div class="glass-card rounded-2xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-800/50 border-b border-slate-700">
+                        <tr>
+                            <th class="p-4 text-xs uppercase font-bold text-slate-400">Student Name</th>
+                            <th class="p-4 text-xs uppercase font-bold text-slate-400">Class</th>
+                            <th class="p-4 text-xs uppercase font-bold text-slate-400">Progress</th>
+                            <th class="p-4 text-xs uppercase font-bold text-slate-400 text-right">Current Level</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody" class="divide-y divide-slate-800">
+                        </tbody>
+                </table>
+            </div>
         </div>
+        
+        <footer class="mt-8 text-center text-slate-500 text-xs uppercase tracking-widest no-print">
+            &copy; 2026 Grammar Mastery System
+        </footer>
     </div>
 
     <script>
+        // Gunakan URL yang sama dengan quiz.html anda
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzn96aYZmhiD09ABO_A9FhBnPzFvlSTGR1KY4lfMo8GKPDm0lPwOcGJIzofLrGE2r8rcg/exec";
         const topics = ["Articles", "Prepositions", "Pronouns", "Verbs", "Conjunctions", "Nouns", "Adjectives", "Adverbs", "Tenses"];
         let allStudents = [];
 
         async function fetchAllData() {
+            const statsEl = document.getElementById('stats');
+            statsEl.innerText = "⌛ Fetching...";
+            
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=all`);
                 allStudents = await res.json();
-                const classes = [...new Set(allStudents.map(s => s.className))];
+                
+                // Ambil senarai unik kelas untuk dropdown
+                const classes = [...new Set(allStudents.map(s => s.className))].sort();
                 const filter = document.getElementById('classFilter');
+                
+                // Simpan pilihan semasa jika ada
+                const currentSelection = filter.value;
+                
                 filter.innerHTML = '<option value="all">All Classes</option>';
-                classes.forEach(c => filter.innerHTML += `<option value="${c}">${c}</option>`);
+                classes.forEach(c => {
+                    if(c) filter.innerHTML += `<option value="${c}">${c}</option>`;
+                });
+                
+                // Kekalkan pilihan kelas selepas refresh
+                filter.value = currentSelection;
+                
                 displayData();
-            } catch (e) { alert("Error loading data."); }
+            } catch (e) { 
+                console.error(e);
+                statsEl.innerText = "❌ Error Loading Data";
+                alert("Failed to connect to Google Sheets. Please check your SCRIPT_URL."); 
+            }
         }
 
         function displayData() {
-            const filter = document.getElementById('classFilter').value;
+            const filter = document.getElementById('classFilter');
+            const filterValue = filter.value;
+            const filterText = filter.options[filter.selectedIndex].text;
+            
             const tbody = document.getElementById('studentTableBody');
+            const subTitle = document.getElementById('subTitle');
             tbody.innerHTML = '';
-            const filtered = filter === 'all' ? allStudents : allStudents.filter(s => s.className === filter);
+            
+            // Kemaskini subtajuk berdasarkan filter (berguna untuk tajuk cetakan)
+            if (filterValue === 'all') {
+                subTitle.innerText = "Full School Performance Overview";
+            } else {
+                subTitle.innerText = `Performance Report for Class: ${filterText}`;
+            }
+
+            // Tapis data
+            const filtered = filterValue === 'all' ? allStudents : allStudents.filter(s => s.className === filterValue);
+            
+            // Susun: Paling tinggi progress di atas
             filtered.sort((a,b) => b.unlockedIndex - a.unlockedIndex);
 
             filtered.forEach(s => {
                 const perc = ((s.unlockedIndex + 1) / topics.length) * 100;
+                const levelName = topics[s.unlockedIndex] || "Completed";
+                
                 tbody.innerHTML += `
                     <tr class="hover:bg-white/5 transition-colors">
-                        <td class="p-4 font-medium">${s.name}</td>
-                        <td class="p-4 text-slate-400 text-sm">${s.className}</td>
+                        <td class="p-4 font-bold text-slate-200">${s.name}</td>
+                        <td class="p-4 text-slate-400 text-sm uppercase">${s.className}</td>
                         <td class="p-4">
                             <div class="flex items-center gap-3">
-                                <div class="flex-1 bg-slate-800 h-2 rounded-full overflow-hidden">
-                                    <div class="bg-gradient-to-r from-slate-400 to-white h-full" style="width: ${perc}%"></div>
+                                <div class="flex-1 bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700">
+                                    <div class="bg-gradient-to-r from-slate-500 to-white h-full transition-all duration-500" style="width: ${perc}%"></div>
                                 </div>
-                                <span class="text-[10px] text-slate-500 font-bold">${Math.round(perc)}%</span>
+                                <span class="text-[10px] text-slate-500 font-bold w-8">${Math.round(perc)}%</span>
                             </div>
                         </td>
                         <td class="p-4 text-right">
-                            <span class="bg-slate-700 text-white text-[10px] px-2 py-1 rounded font-bold uppercase">${topics[s.unlockedIndex] || 'N/A'}</span>
+                            <span class="inline-block bg-slate-700 text-white text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-tighter border border-slate-500">
+                                ${levelName}
+                            </span>
                         </td>
                     </tr>`;
             });
+
             document.getElementById('stats').innerText = `Total: ${filtered.length} Students`;
         }
 
+        // Jalankan fetch data secara automatik apabila halaman dibuka
         window.onload = fetchAllData;
     </script>
 </body>
