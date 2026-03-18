@@ -215,32 +215,39 @@
         }
 
         async function handleAuth() {
-            // Pengemaskini: Tukar nama kepada UPPERCASE untuk carian tepat di Sheets
-            const name = document.getElementById('studentName').value.trim().toUpperCase();
-            const cls = document.getElementById('studentClass').value.trim();
+    // Kemaskini: Kedua-dua nama dan kelas ditukar kepada UPPERCASE
+    const name = document.getElementById('studentName').value.trim().toUpperCase();
+    const cls = document.getElementById('studentClass').value.trim().toUpperCase();
 
-            if(!name || !cls) return showModal("Fill in Name and Class!", "Try Again");
-            showModal("⌛ Connecting...", "Loading");
+    if(!name || !cls) return showModal("Fill in Name and Class!", "Try Again");
+    showModal("⌛ Connecting...", "Loading");
 
-            if(authMode === 'register') {
-                await fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "register", name, className: cls }) });
-                showModal("Registration request sent! Now please SIGN IN.", "Success");
-                switchTab('signin');
-            } else {
-                const res = await fetch(`${SCRIPT_URL}?name=${encodeURIComponent(name)}&className=${encodeURIComponent(cls)}`);
-                const data = await res.json();
-                if(data.found) {
-                    unlockedIndex = parseInt(data.unlockedIndex);
-                    document.getElementById('topicGrid').classList.remove('hidden');
-                    document.getElementById('logoutBtn').classList.remove('hidden');
-                    document.getElementById('loginArea').classList.add('hidden');
-                    renderTopics();
-                    resetIdleTimer();
-                    showModal(`Welcome ${name}!`, "Success");
-                } else { showModal("Not found. Please Register.", "Try Again"); }
-            }
+    if(authMode === 'register') {
+        // Hantar data ke Sheets dalam format huruf besar
+        await fetch(SCRIPT_URL, { 
+            method: "POST", 
+            mode: "no-cors", 
+            body: JSON.stringify({ action: "register", name, className: cls }) 
+        });
+        showModal("Registration request sent! Now please SIGN IN.", "Success");
+        switchTab('signin');
+    } else {
+        // Cari data di Sheets menggunakan format huruf besar
+        const res = await fetch(`${SCRIPT_URL}?name=${encodeURIComponent(name)}&className=${encodeURIComponent(cls)}`);
+        const data = await res.json();
+        if(data.found) {
+            unlockedIndex = parseInt(data.unlockedIndex);
+            document.getElementById('topicGrid').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            document.getElementById('loginArea').classList.add('hidden');
+            renderTopics();
+            resetIdleTimer();
+            showModal(`Welcome ${name}!`, "Success");
+        } else { 
+            showModal("Not found. Please Register.", "Try Again"); 
         }
-
+    }
+}
         function renderTopics() {
             const container = document.getElementById('topicGrid');
             container.innerHTML = '';
